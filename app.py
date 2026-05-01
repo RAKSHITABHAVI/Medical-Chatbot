@@ -13,9 +13,7 @@ from src.prompt import get_prompt
 
 app = Flask(__name__)
 
-# -------------------------------
-# ✅ Clean + shorten answer
-# -------------------------------
+
 def clean_text(text):
     text = re.sub(r'-\s+', '', text)          # fix broken words
     text = re.sub(r'\s+', ' ', text)          # remove extra spaces
