@@ -6,7 +6,7 @@ from langchain_community.vectorstores import FAISS
 
 app = Flask(__name__)
 
-# Load embeddings
+# ✅ REAL embeddings (gives correct answers)
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
@@ -33,7 +33,8 @@ def chat():
     docs = retriever.get_relevant_documents(user_input)
 
     if docs:
-        response = docs[0].page_content
+        # combine top results for better answer
+        response = " ".join([doc.page_content for doc in docs[:2]])
     else:
         response = "Sorry, I don't know."
 
