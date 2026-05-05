@@ -1,45 +1,71 @@
-from flask import Flask, render_template, request, jsonify
-import os
-
+import streamlit as st
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+from transformers import pipeline
 
-app = Flask(__name__)
+# Page config
+st.set_page_config(page_title="Medical Chatbot")
 
-# ✅ REAL embeddings (gives correct answers)
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+st.title("🩺 Medical Chatbot (AI Powered)")
 
-# Load FAISS index
-vectorstore = FAISS.load_local(
-    "faiss_index",
-    embeddings,
-    allow_dangerous_deserialization=True
-)
+# Load FAISS DB
+@st.cache_resource
+def load_db():
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
 
-retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    db = FAISS.load_local(
+        "faiss_index",
+        embeddings,
+        allow_dangerous_deserialization=True
+    )
+    return db
 
+# Load LLM
+@st.cache_resource
+def load_model():
+    pipe = pipeline(
+        "text2text-generation",
+        model="google/flan-t5-base"
+    )
+    return pipe
 
-@app.route("/")
-def index():
-    return render_template("chat.html")
+# Initialize
+db = load_db()
+llm = load_model()
 
+# User input
+query = st.text_input("Ask a medical question:")
 
-@app.route("/get", methods=["POST"])
-def chat():
-    user_input = request.form["msg"]
+if query:
+    docs = db.similarity_search(query, k=3)
 
-    docs = retriever.get_relevant_documents(user_input)
+    # Combine context
+    context = " ".join([doc.page_content for doc in docs])
 
-    if docs:
-        # combine top results for better answer
-        response = " ".join([doc.page_content for doc in docs[:2]])
-    else:
-        response = "Sorry, I don't know."
+    # FINAL PROMPT (clean + structured)
+    prompt = f"""
+You are a helpful medical assistant.
 
-    return jsonify({"response": response})
+Use ONLY the information from the context below to answer the question.
 
+Context:
+{context}
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+Question:
+{query}
+
+Instructions:
+- Give a short, clear, and structured answer
+- Avoid repeating unnecessary text
+- Explain in simple words
+
+Answer:
+"""
+
+    # Generate answer
+    result = llm(prompt, max_length=200)
+
+    st.write("### Answer:")
+    st.write(result[0]["generated_text"])

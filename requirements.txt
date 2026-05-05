@@ -1,6 +1,8 @@
-streamlit==1.35.0
+streamlit==1.36.0
 langchain==0.2.10
 langchain-community==0.2.10
-sentence-transformers==2.6.1
+sentence-transformers==2.7.0
+transformers==4.41.2
+torch==2.2.2
 faiss-cpu==1.13.2
-pypdf==4.2.0
+pypdf
